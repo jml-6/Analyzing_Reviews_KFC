@@ -1,0 +1,256 @@
+---
+title: "STAT 234 Final Project, Fall 2022"
+author: "KFC Group"
+date: "2022-12-06"
+output:
+  pdf_document: default
+  html_document:
+    df_print: paged
+---
+# The effect of city size on review quantity and quality
+#### By Emily Watabe, Shirley Ang, Katsuhiko Maeda, and John Linford <br>
+
+```{r setup, include=FALSE}
+#knitr::opts_chunk$set(echo = TRUE, message = FALSE, warning = FALSE)
+library(tidyverse)
+```
+
+### Purpose: 
+Our purpose is to determine the effect of city size on the reviews of Kentucky Fried Chicken locations in the United States. This analysis provides an assessment of the quality of service of existing KFC restaurants because 95% of diners make decisions based on reviews and 31% pay more based on positive reviews (see Appendix for sourcing). Understanding the factors that impact customer ratings will help the KFC franchise improve and expand services based on city sizes. We will also explore the relationship between the number of reviews at each restaurant, and the average rating at each location. <br>
+
+### Sampling Methodology: 
+The analysis was conducted first by collecting data. Based on the definition of large and small city sizes by the Organization for Economic Cooperation and Development, we defined the population for large cities as 1.5 million-8 million, and small cities as 50,000-200,000. We determined the seven United States cities that fall into the population range of large cities. Using the restaurant locator on the KFC website, we recorded the address, number of reviews, and average rating from each location in the seven large cities. We then repeated the process for the smaller cities; however, due to the large number of small cities, we recorded information only from cities that were in the same states as the large cities (New York, California, Illinois, Texas, Arizona, and Pennsylvania). The following is a summary of the data collected:
+
+```{r, echo=FALSE}
+#large cities
+loc <- c("New York (NY)", "Los Angeles (CA)", "Chicago (IL)", "Houston (TX)", "Phoenix (AZ)", "San Antonio (TX)", "Philadelphia (PA)")
+KFC_numloc <- c(7,22,22,34,9,22,18)
+avg_review <- c(360.71,451.14,561.64,471.50,772.56,466.55,599.22)
+avg_rating <- c(3.2,3.66,3.47,3.29,3.21,3.55,3.28)
+largecit <- data.frame(loc,KFC_numloc,avg_review,avg_rating)
+
+print(largecit)
+
+#small cities
+smloc <- c("New York", "California", "Illinois", "Texas", "Arizona", "Pennsylvania")
+smKFC_numloc <- c(2,112,13,41,5,1)
+smavg_review <- c(551,375,435.85,481.49,446,1060)
+smavg_rating <- c(3.15,3.55,3.21,3.41,2.52,3.9)
+smallcit <- data.frame(smloc, smKFC_numloc, smavg_review, smavg_rating)
+
+print(smallcit)
+```
+There are **134 large cities and 174 small cities**. 
+
+Using the gathered data, we started with an analysis of the correlation between the number of reviews and the average rating for each restaurant to determine the weights of the ratings with the number of reviews. The resulting correlation coefficient was only **0.075 in small cities, and 0.185 in the large cities**, showing that there is a very weak relationship between number and quality of reviews. The number of ratings at all locations, with an exception of one restaurant with only 22 reviews, had greater than 30 reviews. Based on the weak correlation as well as the Central Limit Theorem, we decided to conduct unweighted analyses.
+
+```{r, include=FALSE}
+# Read in data
+small <- read_csv("small_cities.csv")
+large <- read_csv("large_cities.csv")
+
+
+# Randomly sample data (with replacement for equal probability sampling)
+set.seed(1)
+
+# Small city sample
+small_sample <- sample_n(small, ceiling(nrow(small) * 0.75), replace = TRUE)
+
+# Large city sample
+large_sample <- sample_n(large, ceiling(nrow(large) * 0.75), replace = TRUE)
+```
+
+```{r}
+# Small cities
+#Correlation between ratings and # of reviews in small cities
+cor(small$Rating, small$Reviews)
+
+#graphical summary
+smallcities_plot <- ggplot(data=small, mapping=aes(x=Reviews, y=Rating)) + geom_point() + geom_smooth()
+smallcities_plot + labs(x = "Reviews", y="Rating", title = "Small Cities Reviews vs Ratings")
+
+
+# Large cities
+#Correlation between ratings and # of reviews in large cities
+cor(large$Rating, large$Reviews)
+
+#graphical summary
+largecities_plot <- ggplot(data=large, mapping=aes(x=Reviews, y=Rating)) + geom_point() + geom_smooth()
+largecities_plot + labs(x = "Reviews", y="Rating", title = "Large Cities Reviews vs Ratings")
+```
+
+We also performed exploratory analysis on the data. The resulting histograms do not visually show a major difference in distribution. 
+```{r}
+### Exploratory analysis
+
+# Histograms
+ggplot(data = small_sample, mapping = aes(x = Rating)) +
+  geom_histogram(binwidth = .1) +
+  labs(title = "Histogram of Ratings for Small Cities",
+       y = "Count")
+
+ggplot(data = large_sample, mapping = aes(x = Rating)) +
+  geom_histogram(binwidth = .1) +
+  labs(title = "Histogram of Ratings for Large Cities",
+       y = "Count")
+```
+
+### Results: 
+To determine the relationship between city size and rating, we performed a two-sample t-test of unequal variances, using proportional allocation from each group to calculate the sample size. We randomly sampled 75% from each group (131 from small cities and 101 from large cities) with replacement. The t-test resulted in a **p-value of 0.3002**, which is not significant at a significance level of 0.05. 
+
+```{r}
+### Two-sample t-test
+# Check for equal variances
+var.test(small_sample$Rating, large_sample$Rating)
+
+# Perform t-test of unequal variances
+t.test(small_sample$Rating, large_sample$Rating, var.equal = FALSE)
+
+# Boxplots
+boxplot <- rbind(small %>% mutate(Size = "Small"), large %>% mutate(Size = "Large"))
+
+ggplot(data = boxplot, mapping = aes(x = Size, y = Rating)) +
+  geom_boxplot(color = "red") +
+  labs(title = "Boxplots of Ratings by City Size")
+```
+
+The 2-sample t-test of unequal variances shows that the mean rating for large and small cities is not significant with a **p-value of 0.3002**.
+
+We also conducted a one-stage stratification analysis of equal probability using proportional allocation. The estimated population mean for all KFC restaurants ratings was found to be 3.449. For small cities, we calculated a 95% confidence interval of **(3.45, 3.49)**. For large cities, we calculated a confidence interval of **(3.41, 3.44)**. We also calculated an overall confidence interval of **(3.43, 3.47)**. The closeness of the intervals for small and large cities further demonstrates the statistically insignificant difference in ratings based on city size. 
+
+```{r}
+
+# Define population of strata
+N_small <- as.numeric(nrow(small))
+N_large <- as.numeric(nrow(large))
+N <- N_small + N_large
+
+# Define sample size of strata
+n_small <- 0.75 * N_small
+n_large <- 0.75 *N_large
+
+# Small city rate sample
+small_sample_rate <- unlist(small_sample$Rating)
+
+# Large city rate sample
+large_sample_rate <- unlist(large_sample$Rating)
+
+# Calculate sample means ratings
+mean_small_rate <- mean(small_sample_rate)
+mean_large_rate <- mean(large_sample_rate)
+
+# Calculate sample variation for small
+var_small <- (1-(n_small / N_small))*((N_small / N)^2)*((sd(small_sample_rate)^2) / n_small)
+
+# Calculate sample variation for large
+var_large <- (1-(n_large / N_large))*((N_large / N)^2)*((sd(large_sample_rate)^2) / n_large)
+
+# Calculate standard error for small
+se_small <- sqrt(var_small)
+
+# Calculate standard error for large
+se_large <- sqrt(var_large)
+
+# Calculate 95% confidence interval for small
+upper_small <- mean_small_rate + 1.96*se_small
+lower_small <- mean_small_rate - 1.96*se_small
+CI_small <- c(lower_small, upper_small)
+
+# Calculate 95% confidence interval for large
+upper_large <- mean_large_rate + 1.96*se_large
+lower_large <- mean_large_rate - 1.96*se_large
+CI_large <- c(lower_large, upper_large)
+
+# Calculate overall mean estimate
+mean <- (N_small / N) * mean_small_rate + (N_large / N) * mean_large_rate
+mean
+
+# Calculate overall variance
+var <- (1-(n_small / N_small))*((N_small / N)^2)*((sd(small_sample_rate)^2) / n_small) + (1-(n_large / N_large))*((N_large / N)^2)*((sd(large_sample_rate)^2) / n_large)
+
+
+# Calculate overall standard error
+se <- sqrt(var)
+
+# Calculate overall 95% Confidence Interval
+upper <- mean + 1.96 * se
+lower <- mean - 1.96 * se
+
+CI <- c(lower, upper)
+
+# Print all confidence intervals
+c(CI_small, CI_large, CI)
+```
+
+### Conclusions: 
+Since the p-value for the ratings between city size and rating is not significant and the means of the cities sizes are similar, it means that the city size does not affect the rating of the restaurants. 
+Since there is no substantive difference in review quality/quantity and size of city, we concluded that the locations of the stores does not matter. KFC should improve those individual stores that have lower ratings in order to push up the overall ratings of KFC. <br>
+
+### Limitations
+One limitation of this analysis is the definition of small cities. According to the Organization for Economic Cooperation and Development, the actual definition of a small, urban city is a population size of 50,000 - 200,000; however, we found that the majority of the cities in this group were so small that there were no KFC restaurants located in the area. This would have led to very small sample sizes. Instead, we had to define our small cities as “medium” sized because larger cities had more KFC restaurants. Our analysis may have resulted in a significant result if we had analyzed a restaurant widely available in very small and very large cities.
+
+Another limitation was the range of our data. Because there are hundreds of cities that met our criteria of a small city, we did not have the means to gather data from all of the cities in the United States. To make the gathering process more feasible, we recorded information from cities only in the states with large cities that were also included in our analysis. This analysis could be improved by utilizing data from all cities in the United States that are considered small so that the results can be more accurate.
+
+Additionally, reviews of restaurants are necessarily biased because they are written by individuals who have their own opinions, experiences, and preferences. These reviewers may have different expectations, tastes, and standards than other people, and their opinions may be influenced by factors such as the food, service, atmosphere, and value of the restaurant. Also, reviewers may have personal biases or conflicts of interest that affect their review, such as if they have a relationship with the restaurant or its staff. As a result, basing any/all firm conclusions on reviews alone is likely to be insufficient for effective service improvements. <br>
+
+### Recommendations:
+Further testing recommendations from a statistical analysis on review quality and quantity might include conducting the analysis on a larger sample of restaurant chains in order to get a more representative view of the industry. This could include testing a wider range of restaurant types, such as fast food, casual dining, and fine dining, in order to see if there are any significant differences in review quality and quantity among these different categories. 
+
+Additionally, it might be useful to investigate what factors contribute to reviews in the first place, such as the overall quality of the restaurant, the service, the atmosphere, and the value for money. This could help to identify what drives customers to leave reviews and what factors are most important to them. Overall, further testing and analysis in these areas could provide valuable insights into the factors that affect review quality and quantity in the restaurant industry.
+
+Finally, in the future, further testing should do a two stage stratification since it would reduce variability between states. 
+
+
+## Apenndix
+#### Structure
+### What is the question or questions you are trying to answer with the sampling?
+Is there a difference in KFC ratings for large and small cities? <br>
+What sampling methodologies did you use to get to an answer? <br>
+This may include defining your target population.<br>
+All KFCs in urban/large metropolitan areas in  the United States<br>
+This may include defining your sampling frame.<br>
+All KFCs in the United States.<br>
+Discussing limitation on your observation unit, measurement shortcomings and process of obtaining data.<br>
+Couldn’t sample all city sizes (only large metropolitan/urban)<br>
+Couldn’t sample all states (only sampled from 6 states)<br>
+It should be clear in your presentation and paper what sampling techniques were used.<br>
+What analysis did you do to get your answer or answers.<br>
+Null Hypothesis: Restaurants in larger cities get worse reviews than smaller cities.<br>
+Method:<br>
+Stratify on city size (Shirley)<br>
+2-sample t-test on rating  (Emily)<br>
+174 * 0.75 = 131<br>
+134 * 0.75 = 101<br>
+Regression: number of reviews vs quality of reviews by city size (Katsu)<br>
+Conclusion and answers obtained along with lessons learned or advice for future study <br>
+
+## Background:
+KFC is the 4th largest restaurant chain in the US, with 26,934 locations and $31.3B in revenue [(Wiki)}(https://en.wikipedia.org/wiki/List_of_the_largest_fast_food_restaurant_chains)
+
+Ratings/reviews are crucial to a restaurant’s success. 94% of US diners choose their restaurants based on reviews [(Small Biz Trends)}(https://smallbiztrends.com/2018/06/how-diners-choose-restaurants.html). 31% of diners are willing to pay more for a restaurant that has positive reviews.  
+
+According to the Organization for Economic Co-operation and Development, city sizes are defined as follows:
+Large Metropolitan = 1.5 million or more
+Metropolitan = 500,000 - 1.5 million
+Medium (urban areas) = 200,000 - 500,000
+Small (urban areas) = 50,000 - 200,000
+
+Our data:
+“Large” = 1.5 million - 8 million
+New York City, NY (8,622,357)
+Los Angeles, CA (4,085,014)
+Chicago, IL (2,670,406)
+Houston, TX (2,378,146)
+Phoenix, AZ (1,743,469)
+Philadelphia, PA (1,590,402)
+San Antonio, TX (1,579,504)
+“Small” = 200,000 - 500,000
+All cities from the same states as the large cities
+
+Sampling Methodologies
+KFC Restaurant Locator:
+LP
+Recorded location, number of reviews, and average rating (out of 5)
+
+
+
